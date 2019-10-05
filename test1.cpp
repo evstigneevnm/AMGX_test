@@ -410,9 +410,8 @@ int main(int argc, char const *argv[])
     check_memory("AMGX distroyed"); 
 
 
-    ad_eq_class.
-    check_memory("advect_diff_eq distroyed"); 
-
+//    check_memory("advect_diff_eq distroyed"); 
+    
 
    
     return 0;

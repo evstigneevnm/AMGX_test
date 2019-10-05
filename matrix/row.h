@@ -30,7 +30,7 @@ public:
     
     void add_block(Block block_l, int col_l)
     {
-        if(block_l.is_set())
+        if( block_l.is_set() )
         {
             data.push_back({col_l, block_l});
             //column.push_back(col_l);
