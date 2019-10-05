@@ -36,7 +36,7 @@ public:
     {
         for( auto elem : list )
         {
-            if(index<Block_Size*Block_Size-1)
+            if(index<Block_Size*Block_Size)
             {
                 data[index++] = T(elem);
             }
@@ -75,7 +75,7 @@ public:
         }
         for( auto elem : list )
         {
-            if(index<Block_Size*Block_Size-1)
+            if(index<Block_Size*Block_Size)
             {
                 data[index++] = T(elem);
             }
@@ -102,9 +102,9 @@ public:
             std::cout << std::endl;
         }
     }
-    void is_set()
+    bool is_set()
     {
-        if(index == (Block_Size*Block_Size-1))
+        if(index == (Block_Size*Block_Size) )
             return true;
         else
             return false;

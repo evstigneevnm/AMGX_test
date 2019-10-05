@@ -9,7 +9,7 @@ class sparse_matrix
 {
 public:
     typedef typename Row::T T;
-    unsigned int Block_Size = Row::Block_Size;
+    static const unsigned int Block_Size = Row::Block_Size;
 
 // external CPU containers for CSR format
     T *data = nullptr;

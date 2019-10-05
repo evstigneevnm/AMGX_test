@@ -29,7 +29,7 @@ template<class Block, class Row, class Smatrix>
 class advect_diff_eq
 {
 public:
-    typedef typename Smatrix::Block_T T;
+    typedef typename Smatrix::T T;
     static const unsigned int Block_Size = Smatrix::Block_Size;
 
     advect_diff_eq(int Nx_, int Ny_):
@@ -37,7 +37,7 @@ public:
     {
         b_h = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
         x_h = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
-        sparse_matrix_p = new SMatrix(Nx*Ny);
+        sparse_matrix_p = new Smatrix(Nx*Ny);
         init_CUDA_arrays();
 
     }
@@ -70,7 +70,7 @@ public:
             {
 
                 set_row(j, k);                
-                sparse_matrix_p->add_row(R0);
+                sparse_matrix_p->add_row(*R0);
 
             }
         }
@@ -144,7 +144,7 @@ public:
     T* b_d = nullptr;
     T* x_d = nullptr;
     Smatrix* sparse_matrix_p;
-    Block* Bd, Bxp, Byp, Bxm, Bym;
+    Block *Bd, *Bxp, *Byp, *Bxm, *Bym;
     Row* R0;
 private:
     int Nx, Ny;
@@ -162,11 +162,11 @@ private:
         
         R0->set_reserve_row(ind(j,k), 5);
         
-        R0->add_block(Bd, ind(j,k));
-        R0->add_block(Bxp, ind(j+1,k));
-        R0->add_block(Bxm, ind(j-1,k));
-        R0->add_block(Byp, ind(j,k+1));
-        R0->add_block(Bym, ind(j,k-1));
+        R0->add_block(*Bd, ind(j,k));
+        R0->add_block(*Bxp, ind(j+1,k));
+        R0->add_block(*Bxm, ind(j-1,k));
+        R0->add_block(*Byp, ind(j,k+1));
+        R0->add_block(*Bym, ind(j,k-1));
 
     }  
 
@@ -239,8 +239,8 @@ private:
     }
     void copy_CUDA_arrays()
     {
-        host_2_device_cpy<T>(b_d, b_h, Nx*Ny*block_size);
-        host_2_device_cpy<T>(x_d, x_h, Nx*Ny*block_size);        
+        host_2_device_cpy<T>(b_d, b_h, Nx*Ny*Block_Size);
+        host_2_device_cpy<T>(x_d, x_h, Nx*Ny*Block_Size);        
         sparse_matrix_p->form_matrix_gpu();
     }
 
@@ -266,11 +266,11 @@ private:
             array = nullptr;
         }
     }
-    inline void ind(int j, int k)
+    inline int ind(int j, int k)
     {
         return (j)*Ny+(k);
     }
-    inline void indb(int j, int k, int l)
+    inline int indb(int j, int k, int l)
     {
         return 2*((j)*Ny+(k)) + l;
     }
@@ -300,9 +300,9 @@ int main(int argc, char const *argv[])
 {
     
 
-    if(argc!=2)
+    if(argc!=3)
     {
-        printf("Usage: %s path_to_amgx_config_file \n",argv[0]);
+        printf("Usage: %s matrix_size path_to_amgx_config_file \n",argv[0]);
         return 0;
     }
 
@@ -314,7 +314,9 @@ int main(int argc, char const *argv[])
     AMGX_solver_handle solver_x;
     AMGX_SOLVE_STATUS status_x;
 
-
+    int Nx = 5, Ny = 5;
+    Nx = atoi(argv[1]);
+    Ny = Nx;
 
     if(init_cuda(10)==-1)
     {
@@ -323,7 +325,6 @@ int main(int argc, char const *argv[])
     }
 
   
-    int Nx = 5, Ny = 5;
 
     //typedefs
     const int block_size = 2;
@@ -337,6 +338,7 @@ int main(int argc, char const *argv[])
     adv_eq_t ad_eq_class(Nx, Ny);
 
     ad_eq_class.form_CUDA_arrays();
+    ad_eq_class.print_matrix();
 
     printf("nnzb = %i\n",ad_eq_class.get_number_of_nonzero_blocks());
     
@@ -347,7 +349,7 @@ int main(int argc, char const *argv[])
     AMGX_SAFE_CALL(AMGX_install_signal_handler());
     set_amgx_mode<double>(mode_x);
 
-    AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg_x, argv[1]));
+    AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg_x, argv[2]));
     AMGX_SAFE_CALL(AMGX_resources_create_simple(&resources_x, cfg_x));
 
     AMGX_SAFE_CALL(AMGX_config_add_parameters(&cfg_x, "exception_handling=1"));
