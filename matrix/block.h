@@ -19,7 +19,7 @@ public:
         
         if( list.size() == Block_Size*Block_Size )
         {
-            reset_data();
+            reset_index();
             for( auto elem : list )
             {
                 data[index++] = T(elem);
@@ -36,7 +36,7 @@ public:
     {
         for( auto elem : list )
         {
-            if(index<Block_Size*Block_Size)
+            if(index<Block_Size*Block_Size-1)
             {
                 data[index++] = T(elem);
             }
@@ -48,6 +48,44 @@ public:
         }
     }
 
+    //function updates block data by setting th whole addition block
+    void update_set_block(std::initializer_list<T> list)
+    {
+        if( list.size() == Block_Size*Block_Size )
+        {
+            reset_index();
+            for( auto elem : list )
+            {
+                data[index++] += T(elem);
+            }
+        }
+        else
+        {
+            //TODO produce error!
+            std::cerr << "update_block(list): block Block_Size is not consistent with list Block_Size. Block is not updated." << std::endl;
+        }    
+
+    }
+    //funciton updates to block by any number of parameters assuming that index is already reached block_size*block_size-1. The index is reseted if the block was set before. Otherwise this function does nothing and reports a error
+    void update_add_to_block( std::initializer_list<T> list )
+    {
+        if(index == Block_Size*Block_Size-1)
+        {
+            index = 0;
+        }
+        for( auto elem : list )
+        {
+            if(index<Block_Size*Block_Size-1)
+            {
+                data[index++] = T(elem);
+            }
+            else
+            {
+                //TODO produce error!
+                std::cerr << "update_add_to_block(list): list not added since commulative list Block_Size is greater than added data to block." << std::endl;
+            }
+        }
+    }
 
     T data[Block_Size*Block_Size];
     int index = 0;
@@ -64,9 +102,16 @@ public:
             std::cout << std::endl;
         }
     }
+    void is_set()
+    {
+        if(index == (Block_Size*Block_Size-1))
+            return true;
+        else
+            return false;
+    }
 
 private:
-    void reset_data()
+    void reset_index()
     {
         index = 0;
 

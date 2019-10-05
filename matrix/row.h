@@ -27,11 +27,15 @@ public:
         row_number = row_l;
 
     }
+    
     void add_block(Block block_l, int col_l)
     {
-        data.push_back({col_l, block_l});
-        //column.push_back(col_l);
-        number_of_nonzero_blocks++;
+        if(block_l.is_set())
+        {
+            data.push_back({col_l, block_l});
+            //column.push_back(col_l);
+            number_of_nonzero_blocks++;
+        }
     }
     void print_row()
     {

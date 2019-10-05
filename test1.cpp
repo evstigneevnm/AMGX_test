@@ -5,6 +5,7 @@
 #include <utils/cuda_support.h>
 #include <vector>
 #include <map>
+#include <cmath>
 
 #include <matrix/block.h>
 #include <matrix/row.h>
@@ -24,37 +25,238 @@ void check_memory(std::string message)
 
 }
 
-template<class Block>
+template<class Block, class Row, class Smatrix>
 class advect_diff_eq
 {
 public:
-    typedef typename Block::Block_T T;
-    static const unsigned int Block_Size = Block::Block_Size;
+    typedef typename Smatrix::Block_T T;
+    static const unsigned int Block_Size = Smatrix::Block_Size;
 
     advect_diff_eq(int Nx_, int Ny_):
     Nx(Nx_), Ny(Ny_)
     {
-        b = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
-        x = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
+        b_h = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
+        x_h = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
+        sparse_matrix_p = new SMatrix(Nx*Ny);
+        init_CUDA_arrays();
 
     }
     ~advect_diff_eq()
     {
+        delete sparse_matrix_p;
+        free_C_array(b_h);
+        free_C_array(x_h);
+        free_CUDA_arrays();
+    }
 
-        free_C_array(b);
-        free_C_array(x);
+    void form_CUDA_arrays()
+    {
+        form_C_arrays();
+        copy_CUDA_arrays();
+    }
+
+    void form_C_arrays()
+    {
+        Bd = new Block();
+        Bxp = new Block();
+        Byp = new Block();
+        Bxm = new Block();
+        Bym = new Block();
+        R0 = new Row();
+
+        for(int j=0;j<Nx;j++)
+        { 
+            for(int k=0;k<Ny;k++)
+            {
+
+                set_row(j, k);                
+                sparse_matrix_p->add_row(R0);
+
+            }
+        }
+        delete R0;
+        delete Bd, Bxp, Byp, Bxm, Bym;
 
     }
 
-    T* b = nullptr;
-    T* x = nullptr;
+    void print_matrix(bool force_print_ = false)
+    {
+        if(Nx*Ny<26)
+        {
+            sparse_matrix_p->print_matrix();
+        }
+        else if(force_print_)
+        {
+            sparse_matrix_p->print_matrix();
+        }
+    }
 
+    unsigned int get_number_of_nonzero_blocks()
+    {
+        return sparse_matrix_p->get_number_of_nonzero_blocks();
+    }
+
+    int *get_matrix_JA()
+    {
+        return sparse_matrix_p->JA;
+    }
+    int *get_matrix_IA()
+    {
+        return sparse_matrix_p->IA;
+    }
+    T *get_matrix_data()
+    {
+        return sparse_matrix_p->data;
+    }
+    T* get_b()
+    {
+        return b_h;
+    }
+    T* get_x()
+    {
+        return x_h;
+    }
+
+
+    int *get_matrix_CUDA_JA()
+    {
+        return sparse_matrix_p->JA_d;
+    }
+    int *get_matrix_CUDA_IA()
+    {
+        return sparse_matrix_p->IA_d;
+    }
+    T *get_matrix_CUDA_data()
+    {
+        return sparse_matrix_p->data_d;
+    }
+    T* get_b_CUDA()
+    {
+        return b_d;
+    }
+    T* get_x_CUDA()
+    {
+        return x_d;
+    }
+
+    T* b_h = nullptr;
+    T* x_h = nullptr;
+    T* b_d = nullptr;
+    T* x_d = nullptr;
+    Smatrix* sparse_matrix_p;
+    Block* Bd, Bxp, Byp, Bxm, Bym;
+    Row* R0;
 private:
     int Nx, Ny;
-    void initial_vectors()
-    {
-        
 
+
+
+
+    void set_row(int j, int k)
+    {
+        set_d_block(j, k);
+        set_xp_block(j, k);
+        set_yp_block(j, k);
+        set_xm_block(j, k);
+        set_ym_block(j, k);
+        
+        R0->set_reserve_row(ind(j,k), 5);
+        
+        R0->add_block(Bd, ind(j,k));
+        R0->add_block(Bxp, ind(j+1,k));
+        R0->add_block(Bxm, ind(j-1,k));
+        R0->add_block(Byp, ind(j,k+1));
+        R0->add_block(Bym, ind(j,k-1));
+
+    }  
+
+
+    void set_d_block(int j, int k)
+    {   
+        Bd->set_block({T(8),T(-1),T(-0.2),T(8)});
+    }
+    void set_xp_block(int j, int k)
+    {   
+        if(j<Nx-1)
+        {
+            Bxp->set_block({T(2),T(0),T(0),T(2)});
+        }
+        else
+        {
+            Bd->update_set_block({T(1), T(1), T(1), T(1)});
+        }
+    }    
+    void set_yp_block(int j, int k)
+    {   
+        if(k<Ny-1)
+        {
+            Byp->set_block({T(1),T(0),T(0),T(1)});
+        }
+        else
+        {
+            Bd->update_set_block({T(1), T(1), T(1), T(1)});
+        }
+    }    
+    void set_xm_block(int j, int k)
+    {   
+        if(j>0)
+        {
+            Bxm->set_block({T(2),T(0.5),T(0),T(2)});
+        }
+        else
+        {
+            Bd->update_set_block({T(1), T(1), T(1), T(1)});
+        }
+    }    
+    void set_ym_block(int j, int k)
+    {   
+        if(k>0)
+        {
+            Bym->set_block({T(1),T(0.5),T(1),T(1)});
+        }
+        else
+        {
+            Bd->update_set_block({T(1), T(1), T(1), T(1)});
+        }
+    }    
+
+    //sets vectors on host
+    void set_b_vector(int j, int k)
+    {
+        b_h[indb(j,k,0)] = sin(2*M_PI*T(j)/T(Nx));
+        b_h[indb(j,k,1)] = sin(2*M_PI*T(k)/T(Ny)); 
+    }
+    void set_x_vector(int j, int k)
+    {
+        x_h[indb(j,k,0)] = T(0);
+        x_h[indb(j,k,1)] = T(0);
+    }
+
+    void init_CUDA_arrays()
+    {
+        b_d =  device_allocate<T>(Nx*Ny*Block_Size);
+        x_d =  device_allocate<T>(Nx*Ny*Block_Size);
+    }
+    void copy_CUDA_arrays()
+    {
+        host_2_device_cpy<T>(b_d, b_h, Nx*Ny*block_size);
+        host_2_device_cpy<T>(x_d, x_h, Nx*Ny*block_size);        
+        sparse_matrix_p->form_matrix_gpu();
+    }
+
+
+    void free_CUDA_arrays()
+    {
+        if(x_d != nullptr)
+        {
+            cudaFree(x_d);
+            x_d = nullptr;
+        }
+        if(b_d != nullptr)
+        {
+            cudaFree(b_d);
+            b_d = nullptr;
+        }
     }
     void free_C_array(T*& array)
     {
@@ -63,6 +265,14 @@ private:
             free(array);    
             array = nullptr;
         }
+    }
+    inline void ind(int j, int k)
+    {
+        return (j)*Ny+(k);
+    }
+    inline void indb(int j, int k, int l)
+    {
+        return 2*((j)*Ny+(k)) + l;
     }
     
 };
@@ -113,87 +323,24 @@ int main(int argc, char const *argv[])
     }
 
   
+    int Nx = 5, Ny = 5;
+
+    //typedefs
     const int block_size = 2;
     typedef block<block_size, double> block_t;
     typedef row<block_t> row_t;
-
-    block_t Bd, B;
-    row_t R0;
-    int Nx = 3000, Ny = 3000;
-
-
-    sparse_matrix<row_t> SMatrix(Nx*Ny);
-    double *b_h = (double*)malloc(Nx*Ny*block_size*sizeof(double));
-    double *x_h = (double*)malloc(Nx*Ny*block_size*sizeof(double));
-    double *b_d, *x_d;
-    b_d =  device_allocate<double>(Nx*Ny*block_size);
-    x_d =  device_allocate<double>(Nx*Ny*block_size);
-
-    for(int j=0;j<Nx;j++)
-    { 
-        for(int k=0;k<Ny;k++)
-        {
-            int ind = (j)*Ny+k;
-            int ind_km = (j)*Ny + (k-1);
-            int ind_kp = (j)*Ny + (k+1);
-            int ind_jm = (j-1)*Ny + (k);
-            int ind_jp = (j+1)*Ny + (k);
-
-            b_h[2*ind] = double(1.0);
-            b_h[2*ind+1] = double(2.0);
-
-            x_h[2*ind] = double(0.0);
-            x_h[2*ind+1] = double(0.0);
-
-            Bd.set_block({double(8),-1,-0.2,double(8)});
-            
-            R0.set_reserve_row(ind, 5);
-            if(k>0)
-            {
-                B.set_block({2,0,0,2});
-                R0.add_block(B, ind_km);
-            }
-            if(j>0)
-            {
-                B.set_block({1,0,0,1});
-                R0.add_block(B, ind_jm);
-            }
-            if(k<Ny-1)
-            {
-                B.set_block({2,0.3,0,2});
-                R0.add_block(B, ind_kp);
-            }
-            if(j<Nx-1)
-            {
-                B.set_block({1,0,1,1});
-                R0.add_block(B, ind_jp);
-            }
-            // if(k<Ny-1)
-            // {
-            //     Bp.set_block({1,0,0,1});
-            //     R0.add_block(Bp, ind_p);      
-            // }
-            R0.add_block(Bd, ind); //diagonal block
-            
-            SMatrix.add_row(R0);
-
-        }
-    }
-    
-    host_2_device_cpy<double>(b_d, b_h, Nx*Ny*block_size);
-    host_2_device_cpy<double>(x_d, x_h, Nx*Ny*block_size);
-
+    typedef sparse_matrix<row_t> sparse_matrix_t;
+    typedef advect_diff_eq <block_t, row_t, sparse_matrix_t> adv_eq_t;
 
     check_memory("init");
-    SMatrix.form_matrix_gpu();
-    if(Nx*Ny<26)
-    {
-        SMatrix.print_matrix();
-    }
+    
+    adv_eq_t ad_eq_class(Nx, Ny);
 
-    printf("nnzb = %i\n",SMatrix.get_number_of_nonzero_blocks());
+    ad_eq_class.form_CUDA_arrays();
 
-    check_memory("Smatrix");
+    printf("nnzb = %i\n",ad_eq_class.get_number_of_nonzero_blocks());
+    
+    check_memory("adveciton_diffusion_class");
   
     AMGX_SAFE_CALL(AMGX_initialize());
     AMGX_SAFE_CALL(AMGX_initialize_plugins());
@@ -220,11 +367,11 @@ int main(int argc, char const *argv[])
 //                                          int nnz, int block_dimx, int block_dimy, const int *row_ptrs,
 //                                          const int *col_indices, const void *data, const void *diag_data);
     
-    AMGX_matrix_upload_all(A_x, Nx*Ny, SMatrix.get_number_of_nonzero_blocks(), block_size, block_size, SMatrix.IA_d, SMatrix.JA_d, SMatrix.data_d, NULL);
+    AMGX_matrix_upload_all(A_x, Nx*Ny, ad_eq_class.get_number_of_nonzero_blocks(), block_size, block_size, ad_eq_class.get_matrix_CUDA_IA(), ad_eq_class.get_matrix_CUDA_JA(), ad_eq_class.get_matrix_CUDA_data(), NULL);
 //AMGX_vector_upload(AMGX_vector_handle vec, int n, int block_dim,
 //                  const void *data);
-    AMGX_vector_upload(b_x, Nx*Ny, block_size, b_d);
-    AMGX_vector_upload(x_x, Nx*Ny, block_size, x_d);
+    AMGX_vector_upload(b_x, Nx*Ny, block_size, ad_eq_class.get_b_CUDA());
+    AMGX_vector_upload(x_x, Nx*Ny, block_size, ad_eq_class.get_x_CUDA());
     check_memory("Arrays uploaded");   
 
     if(Nx*Ny<26)
@@ -262,13 +409,9 @@ int main(int argc, char const *argv[])
     AMGX_SAFE_CALL(AMGX_finalize());
     check_memory("AMGX distroyed"); 
 
-    cudaFree(b_d);
-    cudaFree(x_d);
 
-    check_memory("Arrays distroyed"); 
-    free(b_h);
-    free(x_h);
-
+    ad_eq_class.
+    check_memory("advect_diff_eq distroyed"); 
 
 
    
