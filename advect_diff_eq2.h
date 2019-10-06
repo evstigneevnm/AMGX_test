@@ -212,7 +212,7 @@ private:
 
     void set_d_block(int j, int k)
     {   
-        //TODO: take boundary conditions into account!
+        //take boundary conditions into account!
         //we have four conors plus four lines
 
         
