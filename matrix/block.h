@@ -86,6 +86,12 @@ public:
             }
         }
     }
+    void reset_block()
+    {
+        reset_index();
+        for(int j=0;j<Block_Size*Block_Size;j++)
+            data[j]=T(0);
+    }
 
     T data[Block_Size*Block_Size];
     int index = 0;
@@ -99,7 +105,7 @@ public:
             {
                 std::cout << data[j*Block_Size+k] << " ";
             }
-            std::cout << std::endl;
+            std::cout << "|" << std::endl;
         }
     }
     bool is_set()

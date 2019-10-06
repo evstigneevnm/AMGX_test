@@ -10,7 +10,10 @@
 #include <matrix/row.h>
 #include <matrix/sparse_matrix.h>
 
-#include <advect_diff_eq.h>
+#include <advect_diff_eq2.h>
+
+
+
 
 void check_memory(std::string message)
 {
@@ -50,9 +53,9 @@ int main(int argc, char const *argv[])
 {
     
 
-    if(argc!=3)
+    if(argc!=4)
     {
-        printf("Usage: %s matrix_size path_to_amgx_config_file \n",argv[0]);
+        printf("Usage: %s test_number problem_size path_to_amgx_config_file \n",argv[0]);
         return 0;
     }
 
@@ -65,8 +68,14 @@ int main(int argc, char const *argv[])
     AMGX_SOLVE_STATUS status_x;
 
     int Nx = 5, Ny = 5;
-    Nx = atoi(argv[1]);
-    Ny = Nx;
+    int test = atoi(argv[1]);
+    char *path_to_config_file;
+    if(test == 1)
+    {
+        Nx = atoi(argv[2]);
+        Ny = Nx;
+        path_to_config_file = (char*)argv[3];
+    }
 
     if(init_cuda(10)==-1)
     {
@@ -81,14 +90,16 @@ int main(int argc, char const *argv[])
     typedef block<block_size, double> block_t;
     typedef row<block_t> row_t;
     typedef sparse_matrix<row_t> sparse_matrix_t;
-    typedef advect_diff_eq <block_t, row_t, sparse_matrix_t> adv_eq_t;
+    typedef advect_diff_eq2 <block_t, row_t, sparse_matrix_t> adv_eq_t2;
 
     check_memory("init");
     
-    adv_eq_t ad_eq_class(Nx, Ny);
+    adv_eq_t2 ad_eq_class(Nx, Ny);
+    ad_eq_class.set_parameters(12000.0, 100000.0);
 
     ad_eq_class.form_CUDA_arrays();
     ad_eq_class.print_system();
+    ad_eq_class.print_rows();
 
     printf("nnzb = %i\n",ad_eq_class.get_number_of_nonzero_blocks());
     
@@ -99,7 +110,7 @@ int main(int argc, char const *argv[])
     AMGX_SAFE_CALL(AMGX_install_signal_handler());
     set_amgx_mode<double>(mode_x);
 
-    AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg_x, argv[2]));
+    AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg_x, path_to_config_file));
     AMGX_SAFE_CALL(AMGX_resources_create_simple(&resources_x, cfg_x));
 
     AMGX_SAFE_CALL(AMGX_config_add_parameters(&cfg_x, "exception_handling=1"));
@@ -147,6 +158,12 @@ int main(int argc, char const *argv[])
     check_memory("AMGX solver solve"); 
     AMGX_solver_get_status(solver_x, &status_x);
 //end solve
+
+    //get vector back!
+    AMGX_vector_download(x_x, ad_eq_class.get_x_CUDA());
+    
+    ad_eq_class.copy_results();
+    ad_eq_class.print_system();
 
     AMGX_solver_destroy(solver_x);
     AMGX_vector_destroy(x_x);
