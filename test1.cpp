@@ -86,16 +86,16 @@ int main(int argc, char const *argv[])
   
 
     //typedefs
-    const int block_size = 2;
-    typedef block<block_size, double> block_t;
-    typedef row<block_t> row_t;
+    const int block_size2 = 2;
+    typedef block<block_size2, double> block2_t;
+    typedef row<block2_t> row_t;
     typedef sparse_matrix<row_t> sparse_matrix_t;
-    typedef advect_diff_eq2 <block_t, row_t, sparse_matrix_t> adv_eq_t2;
+    typedef advect_diff_eq2 <block2_t, row_t, sparse_matrix_t> adv_eq_t2;
 
     check_memory("init");
     
     adv_eq_t2 ad_eq_class(Nx, Ny);
-    ad_eq_class.set_parameters(12000.0, 100000.0);
+    ad_eq_class.set_parameters(500.0, 100000.0);
 
     ad_eq_class.form_CUDA_arrays();
     ad_eq_class.print_system();
@@ -130,11 +130,11 @@ int main(int argc, char const *argv[])
 //                                          int nnz, int block_dimx, int block_dimy, const int *row_ptrs,
 //                                          const int *col_indices, const void *data, const void *diag_data);
     
-    AMGX_matrix_upload_all(A_x, Nx*Ny, ad_eq_class.get_number_of_nonzero_blocks(), block_size, block_size, ad_eq_class.get_matrix_CUDA_IA(), ad_eq_class.get_matrix_CUDA_JA(), ad_eq_class.get_matrix_CUDA_data(), NULL);
+    AMGX_matrix_upload_all(A_x, Nx*Ny, ad_eq_class.get_number_of_nonzero_blocks(), block_size2, block_size2, ad_eq_class.get_matrix_CUDA_IA(), ad_eq_class.get_matrix_CUDA_JA(), ad_eq_class.get_matrix_CUDA_data(), NULL);
 //AMGX_vector_upload(AMGX_vector_handle vec, int n, int block_dim,
 //                  const void *data);
-    AMGX_vector_upload(b_x, Nx*Ny, block_size, ad_eq_class.get_b_CUDA());
-    AMGX_vector_upload(x_x, Nx*Ny, block_size, ad_eq_class.get_x_CUDA());
+    AMGX_vector_upload(b_x, Nx*Ny, block_size2, ad_eq_class.get_b_CUDA());
+    AMGX_vector_upload(x_x, Nx*Ny, block_size2, ad_eq_class.get_x_CUDA());
     check_memory("Arrays uploaded");   
 
     if(Nx*Ny<26)
