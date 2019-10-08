@@ -4,34 +4,28 @@
 #include <matrix/block.h>
 #include <matrix/row.h>
 #include <matrix/sparse_matrix.h>
+#include <equaitons_general.h>
 
 
 template<class Block, class Row, class Smatrix>
-class advect_diff_eq2
+class advect_diff_eq2: public equaitons_general<Block, Row, Smatrix>
 {
 public:
+   
     typedef typename Smatrix::T T;
     static const unsigned int Block_Size = Smatrix::Block_Size;
+    typedef equaitons_general<Block, Row, Smatrix> equaitons_general_t;
 
     advect_diff_eq2(int Nx_, int Ny_):
-    Nx(Nx_), Ny(Ny_)
+    Nx(Nx_), Ny(Ny_), equaitons_general_t(Nx*Ny)
     {
         dx = T(1)/Nx;
         dy = T(1)/Ny;
         dh = std::max(dx,dy);
-
-        b_h = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
-        x_h = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
-        sparse_matrix_p = new Smatrix(Nx*Ny);
-        init_CUDA_arrays();
-
     }
     ~advect_diff_eq2()
     {
-        delete sparse_matrix_p;
-        free_C_array(b_h);
-        free_C_array(x_h);
-        free_CUDA_arrays();
+
     }
 
     void set_parameters(T dt_, T Re_)
@@ -70,7 +64,6 @@ public:
                 set_x_vector(j, k);
                 set_b_vector(j, k); //first set set_x_vector vector because rhs depends on the solution for the advection diffusion scheme
 
-
             }
         }
         delete R0;
@@ -78,111 +71,7 @@ public:
 
     }
 
-    void print_matrix(bool force_print_ = false)
-    {
-        if(Nx*Ny<26)
-        {
-            sparse_matrix_p->print_matrix();
-        }
-        else if(force_print_)
-        {
-            sparse_matrix_p->print_matrix();
-        }
-    }
 
-    void print_system(bool force_print_ = false)
-    {
-        print_matrix(force_print_);
-        if(Nx*Ny<26)
-        {
-            std::cout << "b:" << std::endl;
-            for(int j = 0; j<Nx*Ny*Block_Size;j++)
-            {
-                std::cout << b_h[j] << " ";
-            }
-            std::cout << "x:" << std::endl;
-            for(int j = 0; j<Nx*Ny*Block_Size;j++)
-            {
-                std::cout << x_h[j] << " ";
-            }            
-        }
-        else if(force_print_)
-        {
-
-        }
-
-    }
-
-    void print_rows(bool force_print_ = false)
-    {
-        if(Nx*Ny<26)
-        {
-            sparse_matrix_p->print_rows();
-        }
-        else if(force_print_)
-        {
-
-        }
-    }
-
-
-    unsigned int get_number_of_nonzero_blocks()
-    {
-        return sparse_matrix_p->get_number_of_nonzero_blocks();
-    }
-
-    int *get_matrix_JA()
-    {
-        return sparse_matrix_p->JA;
-    }
-    int *get_matrix_IA()
-    {
-        return sparse_matrix_p->IA;
-    }
-    T *get_matrix_data()
-    {
-        return sparse_matrix_p->data;
-    }
-    T* get_b()
-    {
-        return b_h;
-    }
-    T* get_x()
-    {
-        return x_h;
-    }
-
-
-    int *get_matrix_CUDA_JA()
-    {
-        return sparse_matrix_p->JA_d;
-    }
-    int *get_matrix_CUDA_IA()
-    {
-        return sparse_matrix_p->IA_d;
-    }
-    T *get_matrix_CUDA_data()
-    {
-        return sparse_matrix_p->data_d;
-    }
-    T* get_b_CUDA()
-    {
-        return b_d;
-    }
-    T* get_x_CUDA()
-    {
-        return x_d;
-    }
-
-
-
-
-
-    T* b_h = nullptr;
-    T* x_h = nullptr;
-    T* b_d = nullptr;
-    T* x_d = nullptr;
-    Smatrix* sparse_matrix_p;
     Block *Bd, *Bxp, *Byp, *Bxm, *Bym;
     Row* R0;
 private:
@@ -316,46 +205,7 @@ private:
         x_h[indb(j,k,1)] = T(0);
     }
 
-    void init_CUDA_arrays()
-    {
-        b_d =  device_allocate<T>(Nx*Ny*Block_Size);
-        x_d =  device_allocate<T>(Nx*Ny*Block_Size);
-    }
-    void copy_2_CUDA_arrays()
-    {
-        host_2_device_cpy<T>(b_d, b_h, Nx*Ny*Block_Size);
-        host_2_device_cpy<T>(x_d, x_h, Nx*Ny*Block_Size);        
-        sparse_matrix_p->form_matrix_gpu();
-    }
-
-    void copy_2_CPU_arrays()
-    {
-        //device_2_host_cpy<T>(b_h, b_d, Nx*Ny*Block_Size);
-        device_2_host_cpy<T>(x_h, x_d, Nx*Ny*Block_Size);        
-    }
-
-    void free_CUDA_arrays()
-    {
-        if(x_d != nullptr)
-        {
-            cudaFree(x_d);
-            x_d = nullptr;
-        }
-        if(b_d != nullptr)
-        {
-            cudaFree(b_d);
-            b_d = nullptr;
-        }
-    }
-    void free_C_array(T*& array)
-    {
-        if(array!=nullptr)
-        {
-            free(array);    
-            array = nullptr;
-        }
-    }
-    inline int ind(int j, int k)
+     inline int ind(int j, int k)
     {
         return (j)*Ny+(k);
     }
