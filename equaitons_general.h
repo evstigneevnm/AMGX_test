@@ -7,8 +7,6 @@
 
 //
 
-
-
 template<class Block, class Row, class Smatrix>
 struct equaitons_general
 {
@@ -21,14 +19,16 @@ struct equaitons_general
     T* b_d = nullptr;
     T* x_d = nullptr;
     Smatrix* sparse_matrix_p;
+    size_t whole_size;
 
     //methods:
-    equaitons_general(size_t whole_size)
+    equaitons_general(size_t whole_size_):
+    whole_size(whole_size_)
     {
-
-        b_h = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
-        x_h = (double*)malloc(Nx*Ny*Block_Size*sizeof(T));
-        sparse_matrix_p = new Smatrix(Nx*Ny);
+        
+        b_h = (double*)malloc(whole_size*Block_Size*sizeof(T));
+        x_h = (double*)malloc(whole_size*Block_Size*sizeof(T));
+        sparse_matrix_p = new Smatrix(whole_size);
         init_CUDA_arrays();
 
     }
@@ -49,20 +49,20 @@ struct equaitons_general
 
    void init_CUDA_arrays()
     {
-        b_d =  device_allocate<T>(Nx*Ny*Block_Size);
-        x_d =  device_allocate<T>(Nx*Ny*Block_Size);
+        b_d =  device_allocate<T>(whole_size*Block_Size);
+        x_d =  device_allocate<T>(whole_size*Block_Size);
     }
     void copy_2_CUDA_arrays()
     {
-        host_2_device_cpy<T>(b_d, b_h, Nx*Ny*Block_Size);
-        host_2_device_cpy<T>(x_d, x_h, Nx*Ny*Block_Size);        
+        host_2_device_cpy<T>(b_d, b_h, whole_size*Block_Size);
+        host_2_device_cpy<T>(x_d, x_h, whole_size*Block_Size);        
         sparse_matrix_p->form_matrix_gpu();
     }
 
     void copy_2_CPU_arrays()
     {
         //device_2_host_cpy<T>(b_h, b_d, Nx*Ny*Block_Size);
-        device_2_host_cpy<T>(x_h, x_d, Nx*Ny*Block_Size);        
+        device_2_host_cpy<T>(x_h, x_d, whole_size*Block_Size);        
     }
 
     void free_CUDA_arrays()
@@ -133,7 +133,7 @@ struct equaitons_general
 
     void print_matrix(bool force_print_ = false)
     {
-        if(Nx*Ny<26)
+        if(whole_size<26)
         {
             sparse_matrix_p->print_matrix();
         }
@@ -146,15 +146,15 @@ struct equaitons_general
     void print_system(bool force_print_ = false)
     {
         print_matrix(force_print_);
-        if(Nx*Ny<26)
+        if(whole_size<26)
         {
             std::cout << "b:" << std::endl;
-            for(int j = 0; j<Nx*Ny*Block_Size;j++)
+            for(int j = 0; j<whole_size*Block_Size;j++)
             {
                 std::cout << b_h[j] << " ";
             }
             std::cout << "x:" << std::endl;
-            for(int j = 0; j<Nx*Ny*Block_Size;j++)
+            for(int j = 0; j<whole_size*Block_Size;j++)
             {
                 std::cout << x_h[j] << " ";
             }            
@@ -168,7 +168,7 @@ struct equaitons_general
 
     void print_rows(bool force_print_ = false)
     {
-        if(Nx*Ny<26)
+        if(whole_size<26)
         {
             sparse_matrix_p->print_rows();
         }

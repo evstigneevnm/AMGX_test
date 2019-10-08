@@ -95,7 +95,7 @@ int main(int argc, char const *argv[])
     check_memory("init");
     
     adv_eq_t2 ad_eq_class(Nx, Ny);
-    ad_eq_class.set_parameters(500.0, 100000.0);
+    ad_eq_class.set_parameters(5000.0, 100000.0);
 
     ad_eq_class.form_CUDA_arrays();
     ad_eq_class.print_system();

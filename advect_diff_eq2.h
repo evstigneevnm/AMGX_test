@@ -6,18 +6,32 @@
 #include <matrix/sparse_matrix.h>
 #include <equaitons_general.h>
 
+/**
+    class for a particular problem
+    This class is for the advection diffusion matrix
+
+*/
+
 
 template<class Block, class Row, class Smatrix>
 class advect_diff_eq2: public equaitons_general<Block, Row, Smatrix>
 {
 public:
-   
+      
     typedef typename Smatrix::T T;
     static const unsigned int Block_Size = Smatrix::Block_Size;
-    typedef equaitons_general<Block, Row, Smatrix> equaitons_general_t;
+    typedef equaitons_general<Block, Row, Smatrix> eg_t;
+
+
+    using eg_t::x_h;
+    using eg_t::b_h;
+    using eg_t::sparse_matrix_p;
+    using eg_t::copy_2_CPU_arrays;
+    using eg_t::copy_2_CUDA_arrays;
+
 
     advect_diff_eq2(int Nx_, int Ny_):
-    Nx(Nx_), Ny(Ny_), equaitons_general_t(Nx*Ny)
+    Nx(Nx_), Ny(Ny_), eg_t(Nx_*Ny_)
     {
         dx = T(1)/Nx;
         dy = T(1)/Ny;
