@@ -26,8 +26,8 @@ struct equaitons_general
     whole_size(whole_size_)
     {
         
-        b_h = (double*)malloc(whole_size*Block_Size*sizeof(T));
-        x_h = (double*)malloc(whole_size*Block_Size*sizeof(T));
+        b_h = (T*)malloc(whole_size*Block_Size*sizeof(T));
+        x_h = (T*)malloc(whole_size*Block_Size*sizeof(T));
         sparse_matrix_p = new Smatrix(whole_size);
         init_CUDA_arrays();
 

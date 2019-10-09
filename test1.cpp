@@ -52,12 +52,14 @@ void set_amgx_mode<float>(AMGX_Mode& mode_x_l)
 int main(int argc, char const *argv[])
 {
     
+    typedef SCALAR_TYPE real;
 
     if(argc!=4)
     {
         printf("Usage: %s test_number problem_size path_to_amgx_config_file \n",argv[0]);
         return 0;
     }
+
 
     AMGX_Mode mode_x;
     AMGX_config_handle cfg_x;
@@ -87,15 +89,20 @@ int main(int argc, char const *argv[])
 
     //typedefs
     const int block_size2 = 2;
-    typedef block<block_size2, double> block2_t;
-    typedef row<block2_t> row_t;
-    typedef sparse_matrix<row_t> sparse_matrix_t;
-    typedef advect_diff_eq2 <block2_t, row_t, sparse_matrix_t> adv_eq_t2;
+    const int block_size3 = 3;
+    typedef block<block_size2, real> block2_t;
+    typedef block<block_size2, real> block3_t;
+    typedef row<block2_t> row2_t;
+    typedef row<block3_t> row3_t;
+    typedef sparse_matrix<row2_t> sparse_matrix2_t;
+    typedef sparse_matrix<row3_t> sparse_matrix3_t;
+    typedef advect_diff_eq2 <block2_t, row2_t, sparse_matrix2_t> adv_eq2_t;
+    //typedef advect_diff_eq3 <block3_t, row3_t, sparse_matrix3_t> adv_eq3_t;
 
     check_memory("init");
     
-    adv_eq_t2 ad_eq_class(Nx, Ny);
-    ad_eq_class.set_parameters(5000.0, 100000.0);
+    adv_eq2_t ad_eq_class(Nx, Ny);
+    ad_eq_class.set_parameters(50000000.0, 100000.0);
 
     ad_eq_class.form_CUDA_arrays();
     ad_eq_class.print_system();
@@ -108,7 +115,7 @@ int main(int argc, char const *argv[])
     AMGX_SAFE_CALL(AMGX_initialize());
     AMGX_SAFE_CALL(AMGX_initialize_plugins());
     AMGX_SAFE_CALL(AMGX_install_signal_handler());
-    set_amgx_mode<double>(mode_x);
+    set_amgx_mode<real>(mode_x);
 
     AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg_x, path_to_config_file));
     AMGX_SAFE_CALL(AMGX_resources_create_simple(&resources_x, cfg_x));

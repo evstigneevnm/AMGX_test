@@ -5,5 +5,7 @@ LPROJECT =  -ldl -L/usr/local/cuda/lib64 -lcudart -lamgxsh -L/media/DATA/shared/
 
 
 
-ser:
-	${CCCOMILER} ${CCFLAGS} ${IPROJECT} test1.cpp -o test1.bin ${LPROJECT} 2>result_make.txt
+der:
+	${CCCOMILER} -DSCALAR_TYPE=double ${CCFLAGS} ${IPROJECT} test1.cpp -o test1.bin ${LPROJECT} 2>result_make.txt
+fer:
+	${CCCOMILER} -DSCALAR_TYPE=float ${CCFLAGS} ${IPROJECT} test1.cpp -o test1.bin ${LPROJECT} 2>result_make.txt
