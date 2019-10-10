@@ -104,9 +104,11 @@ private:
         
         set_d_block(j, k, l);
         set_xp_block(j, k, l);
-        set_yp_block(j, k, l);
         set_xm_block(j, k, l);
+        set_yp_block(j, k, l);
         set_ym_block(j, k, l);
+        set_zp_block(j, k, l);
+        set_zm_block(j, k, l);
         
         R0->set_reserve_row(ind(j,k,l), 7);
         
@@ -129,23 +131,41 @@ private:
         
         T b11 = T(0);
         T b12 = T(0);
+        T b13 = T(0);
+
         T b21 = T(0);
         T b22 = T(0);
+        T b23 = T(0);
+       
+        T b31 = T(0);
+        T b32 = T(0);
+        T b33 = T(0);
+
+        //ux*(ux0_x)+uy*(ux0_y)+uz*(ux0_z)+ux0*(ux_x)+uy0*(ux_y)+uz0*(ux_z)
+        //  ux_x = u_{j+1}-u_{j-1}
+        //
+        //
+        //
+        //ux*(uy0_x)+uy*(uy0_y)+uz*(uy0_z)+ux0*(uy_x)+uy0*(uy_y)+uz0*(uy_z)
+        //ux*(uz0_x)+uy*(uz0_y)+uz*(uz0_z)+ux0*(uz_x)+uy0*(uz_y)+uz0*(uz_z)
 
         if(j==0)
         {
             b11 = T(1)/dt + T(ccc)/dh*(x_h[indb(j+1,k,0)] + x_h[indb(j,k,0)]) + T(1)/dh/dh/Re*(T(4)+T(1));
             b12 = T(ccc)/dh*(x_h[indb(j+1,k,1)] + x_h[indb(j,k,1)]);
+            b13 = T(ccc)/dh*(x_h[indb(j+1,k,1)] + x_h[indb(j,k,1)]);
         }
         else if(j==Nx-1)
         {
             b11 = T(1)/dt + T(ccc)/dh*(-x_h[indb(j,k,0)] - x_h[indb(j-1,k,0)])  + T(1)/dh/dh/Re*(T(4)+T(1));
             b12 = T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j-1,k,1)]);
+            b13 = T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j-1,k,1)]);
         }
         else
         {
             b11 = T(1)/dt + T(ccc)/dh*(x_h[indb(j+1,k,0)] - x_h[indb(j-1,k,0)]) + T(1)/dh/dh/Re*(T(4));
             b12 = T(ccc)/dh*(x_h[indb(j+1,k,1)] - x_h[indb(j-1,k,1)]);
+            b13 = T(ccc)/dh*(x_h[indb(j+1,k,1)] - x_h[indb(j-1,k,1)]);
         }
         if(k==0)
         {
@@ -230,13 +250,13 @@ private:
         x_h[indb(j,k,l,2)] = T(0);
     }
 
-     inline int ind(int j, int k, int l)
+    inline int ind(int j, int k, int l)
     {
         return (j)*Ny*Nz+(k)*Nz+(l);
     }
     inline int indb(int j, int k, int l, int b)
     {
-        return Block_Size*((j)*Ny*Nz+(k)*Nz+(l)) + (b);
+        return Block_Size*(ind(j, k, l)) + (b);
     }
    
 

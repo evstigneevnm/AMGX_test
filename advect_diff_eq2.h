@@ -225,7 +225,7 @@ private:
     }
     inline int indb(int j, int k, int l)
     {
-        return 2*((j)*Ny+(k)) + (l);
+        return Block_Size*(ind(j, k)) + (l);
     }
    
 
