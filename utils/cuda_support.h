@@ -112,6 +112,13 @@ void host_2_device_cpy(T* device, T* host, size_t size)
     CUDA_SAFE_CALL(cudaMemcpy(device, host, sizeof(T)*size, cudaMemcpyHostToDevice));
 }
 
+template <class T>
+void device_2_device_cpy(T* device_d, T* device_s, size_t size)
+{
+    CUDA_SAFE_CALL(cudaMemcpy(device_d, device_s, sizeof(T)*size, cudaMemcpyDeviceToDevice));
+}
+
+
 
 template <class T>
 void device_2_host_cpy(T* host, T* device, int Nx, int Ny, int Nz)

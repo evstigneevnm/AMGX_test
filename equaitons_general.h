@@ -41,6 +41,11 @@ struct equaitons_general
     }
 
 
+    T residual_norm_gpu() const
+    {
+        return(sparse_matrix_p->residual_gpu((const T*&)x_d, (const T*&)b_d));
+    }
+
 
     unsigned int get_number_of_nonzero_blocks()
     {
@@ -87,7 +92,6 @@ struct equaitons_general
         }
     }
 
-
     int *get_matrix_JA()
     {
         return sparse_matrix_p->JA;
@@ -130,6 +134,8 @@ struct equaitons_general
     {
         return x_d;
     }
+
+
 
     void print_matrix(bool force_print_ = false)
     {

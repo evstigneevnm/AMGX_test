@@ -1,8 +1,33 @@
 #pragma once
 
 #include <cstring>
+#include <cmath>
 #include <utils/cuda_support.h>
 #include <utils/cuda_safe_call.h>
+#include <cusparse.h>
+#include <utils/cusparse_safe_call.h>
+
+namespace numerical_algos
+{
+
+
+template<class T>
+cusparseStatus_t cusparseXbsrmv(cusparseHandle_t handle_, cusparseDirection_t dir, cusparseOperation_t trans, int mb, int nb, int nnzb, const T *alpha, const cusparseMatDescr_t descr, const T *bsrVal, const int *bsrRowPtr, const int *bsrColInd, int blockDim, const T *x, const T *beta, T *y)
+{
+}
+
+template<>
+cusparseStatus_t cusparseXbsrmv<float>(cusparseHandle_t handle_, cusparseDirection_t dir, cusparseOperation_t trans, int mb, int nb, int nnzb, const float *alpha, const cusparseMatDescr_t descr, const float *bsrVal, const int *bsrRowPtr, const int *bsrColInd, int blockDim, const float *x, const float *beta, float *y)
+{
+    return cusparseSbsrmv(handle_, dir, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, blockDim, x, beta, y);
+}
+
+template<>
+cusparseStatus_t cusparseXbsrmv<double>(cusparseHandle_t handle_, cusparseDirection_t dir, cusparseOperation_t trans, int mb, int nb, int nnzb, const double *alpha, const cusparseMatDescr_t descr, const double *bsrVal, const int *bsrRowPtr, const int *bsrColInd, int blockDim, const double *x, const double *beta, double *y)
+{
+    return cusparseDbsrmv(handle_, dir, trans, mb, nb, nnzb, alpha, descr, bsrVal, bsrRowPtr, bsrColInd, blockDim, x, beta, y);
+}
+
 
 template<class Row>
 class sparse_matrix
@@ -51,7 +76,10 @@ public:
         {
             free(JA);
         }
-        
+        if(handle != 0)
+        {
+            CUSPARSE_SAFE_CALL( cusparseDestroy(handle) );
+        }
     }
 
 
@@ -104,6 +132,10 @@ public:
     }
     void form_matrix_gpu()
     {
+        
+        if(handle == 0)
+            CUSPARSE_SAFE_CALL( cusparseCreate(&handle) );
+
         form_matrix();
         //GPU manipulaitons require inclusion of some files from <utils/>
         if(data_d == nullptr)
@@ -122,6 +154,8 @@ public:
         host_2_device_cpy<T>( data_d, data, nnz );
         host_2_device_cpy<int>( IA_d, IA, (number_of_rows+1) );
         host_2_device_cpy<int>( JA_d, JA, (number_of_blocks) );
+
+        
 
     }
 
@@ -158,10 +192,85 @@ public:
     {
         return Block_Size;
     }
+
+
+
+    void axpy_gpu(const T* alpha, const T*& x, const T* beta, T*& y)const
+    {
+
+        cusparseDirection_t dir = CUSPARSE_DIRECTION_COLUMN; 
+        cusparseOperation_t trans = CUSPARSE_OPERATION_NON_TRANSPOSE;
+        //T one(1);
+        //T zero(0);
+
+        cusparseMatDescr_t descr = 0; 
+
+        CUSPARSE_SAFE_CALL( cusparseCreateMatDescr(&descr) );
+        cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);
+        cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);
+        cusparseSetMatDiagType(descr, CUSPARSE_DIAG_TYPE_UNIT);
+
+        //TODO how about fill rhs with zeros or something?
+        //CUDA_SAFE_CALL( cudaMemcpy( x_new.d, rhs.d, rhs.N*rhs.block_sz*sizeof(T), cudaMemcpyDeviceToDevice ) );
+
+        //TODO check whether x.block_size(), f.block_size(), block_row_size_ 
+        //and block_col_size_ are the same
+
+        //Matrix multiplication
+        CUSPARSE_SAFE_CALL( cusparseXbsrmv<T>(handle, dir, trans, 
+                                              number_of_rows, number_of_rows, number_of_blocks, 
+                                              alpha, descr, data_d, IA_d, JA_d, 
+                                              Block_Size, x, beta, y) );
+    }
+
+
+    //THIS IS BAD! JUST FOR TESTING PURPOSES!!!
+    T residual_gpu(const T*& x_l, const T*& b_l) const
+    {
+        if(resid == nullptr)
+        {
+            resid = (T*)malloc(number_of_rows*Block_Size*sizeof(T));
+
+        }
+        if(resid_d == nullptr)
+        {
+            resid_d = device_allocate<T>( number_of_rows*Block_Size );
+        }
+
+        device_2_device_cpy<T>(resid_d, (T*)b_l, number_of_rows*Block_Size);
+        T alpha(T(1));
+        T beta(T(-1));
+        axpy_gpu(&alpha, x_l, &beta, (T*&)resid_d);
+        device_2_host_cpy<T>(resid, resid_d, number_of_rows*Block_Size );
+        T resid_val = T(0);
+        for(int j=0;j<number_of_rows*Block_Size;j++)
+            resid_val+=resid[j]*resid[j];
+
+        if(resid != nullptr)
+        {
+            free(resid);
+        }
+        if(resid_d != nullptr)
+        {
+            cudaFree(resid_d);
+        }
+
+
+        return(sqrt(resid_val));
+    }
+
+
 private:
+    cusparseHandle_t handle=0;
+
     int number_of_rows;
     int number_of_blocks;
     int nnz;
     std::map<int, Row > map_container;
+
+    mutable T* resid_d = nullptr;
+    mutable T* resid = nullptr;
     
 };
+
+}

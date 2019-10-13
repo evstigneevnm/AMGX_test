@@ -69,15 +69,17 @@ int main(int argc, char const *argv[])
     AMGX_solver_handle solver_x;
     AMGX_SOLVE_STATUS status_x;
 
-    int Nx = 5, Ny = 5;
+    int Nx = 5, Ny = 5, Nz = 1;
     int test = atoi(argv[1]);
     char *path_to_config_file;
     if(test == 1)
     {
         Nx = atoi(argv[2]);
         Ny = Nx;
+        Nz = 1;
         path_to_config_file = (char*)argv[3];
     }
+
 
     if(init_cuda(10)==-1)
     {
@@ -85,7 +87,7 @@ int main(int argc, char const *argv[])
         return 0;
     }
 
-  
+    real problem_size = 1*1*1;
 
     //typedefs
     const int block_size2 = 2;
@@ -94,8 +96,8 @@ int main(int argc, char const *argv[])
     typedef block<block_size2, real> block3_t;
     typedef row<block2_t> row2_t;
     typedef row<block3_t> row3_t;
-    typedef sparse_matrix<row2_t> sparse_matrix2_t;
-    typedef sparse_matrix<row3_t> sparse_matrix3_t;
+    typedef numerical_algos::sparse_matrix<row2_t> sparse_matrix2_t;
+    typedef numerical_algos::sparse_matrix<row3_t> sparse_matrix3_t;
     typedef advect_diff_eq2 <block2_t, row2_t, sparse_matrix2_t> adv_eq2_t;
     //typedef advect_diff_eq3 <block3_t, row3_t, sparse_matrix3_t> adv_eq3_t;
 
@@ -169,6 +171,8 @@ int main(int argc, char const *argv[])
     //get vector back!
     AMGX_vector_download(x_x, ad_eq_class.get_x_CUDA());
     
+    std::cout << "Residual L2 norm = " << sqrt(problem_size/Nx/Ny/Nz)*ad_eq_class.residual_norm_gpu() << std::endl;
+
     ad_eq_class.copy_results();
     ad_eq_class.print_system();
 
