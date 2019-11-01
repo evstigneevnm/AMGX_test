@@ -89,7 +89,7 @@ public:
     Block *Bd, *Bxp, *Byp, *Bxm, *Bym;
     Row* R0;
 private:
-    double ccc = 0.5;
+    const double ccc = 0.5;
     int Nx, Ny;
     T dt, Re;
     T dx, dy, dh;
@@ -210,13 +210,13 @@ private:
     //sets vectors on host
     void set_b_vector(int j, int k)
     {
-        b_h[indb(j,k,0)] = sin(M_PI*T(j)/T(Nx-1))+x_h[indb(j,k,0)];
-        b_h[indb(j,k,1)] = sin(M_PI*T(k)/T(Ny-1))+x_h[indb(j,k,1)]; 
+        b_h[indb(j,k,0)] = cos(M_PI*T(j)/T(Nx-1));//+x_h[indb(j,k,0)];
+        b_h[indb(j,k,1)] = cos(M_PI*T(k)/T(Ny-1));//+x_h[indb(j,k,1)]; 
     }
     void set_x_vector(int j, int k)
     {
-        x_h[indb(j,k,0)] = T(0);
-        x_h[indb(j,k,1)] = T(0);
+        x_h[indb(j,k,0)] = sin(M_PI*T(j)/T(Nx-1));
+        x_h[indb(j,k,1)] = sin(M_PI*T(j)/T(Nx-1));
     }
 
      inline int ind(int j, int k)

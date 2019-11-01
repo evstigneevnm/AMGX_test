@@ -29,12 +29,13 @@
 #include <cuda_runtime.h>
 
 
-inline int init_cuda(int PCI_ID)
+inline int init_cuda(int PCI_ID, int DEV_ID = -2)
 {
 
     
     int count = 0;
     int i = 0;
+
 
     cudaGetDeviceCount(&count);
     if(count == 0)
@@ -46,8 +47,10 @@ inline int init_cuda(int PCI_ID)
     int deviceNumber=0;
     int deviceNumberTemp=0;
     
+    
     if(count>1)
     {
+
 
         if(PCI_ID==-1)
         {

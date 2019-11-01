@@ -3,6 +3,7 @@
 #include <amgx_c.h>
 #include <utils/cuda_safe_call.h>
 #include <utils/cuda_support.h>
+#include <utils/log.h>
 #include <vector>
 #include <map>
 
@@ -10,6 +11,8 @@
 #include <matrix/row.h>
 #include <matrix/sparse_matrix.h>
 
+#include <amgx_wrap_resources.h>
+#include <amgx_wrap_solver.h>
 #include <advect_diff_eq2.h>
 
 
@@ -31,24 +34,6 @@ void check_memory(std::string message)
 
 
 
-
-template<class TTT>
-void set_amgx_mode(AMGX_Mode& mode_x_l)
-{
-}
-
-template<>
-void set_amgx_mode<double>(AMGX_Mode& mode_x_l)
-{
-    mode_x_l = AMGX_mode_dDDI;
-}
-template<>
-void set_amgx_mode<float>(AMGX_Mode& mode_x_l)
-{
-    mode_x_l = AMGX_mode_dFFI;
-}
-
-
 int main(int argc, char const *argv[])
 {
     
@@ -61,27 +46,21 @@ int main(int argc, char const *argv[])
     }
 
 
-    AMGX_Mode mode_x;
-    AMGX_config_handle cfg_x;
-    AMGX_resources_handle resources_x;
-    AMGX_matrix_handle A_x;
-    AMGX_vector_handle b_x, x_x;
-    AMGX_solver_handle solver_x;
-    AMGX_SOLVE_STATUS status_x;
 
     int Nx = 5, Ny = 5, Nz = 1;
     int test = atoi(argv[1]);
-    char *path_to_config_file;
     if(test == 1)
     {
         Nx = atoi(argv[2]);
         Ny = Nx;
         Nz = 1;
-        path_to_config_file = (char*)argv[3];
+        
     }
+    std::string path_to_config_file( (char*)argv[3] );
 
 
-    if(init_cuda(10)==-1)
+    int device_number = init_cuda(4);
+    if(device_number==-1)
     {
         std::cout << "error in GPU selection." << std::endl; 
         return 0;
@@ -92,19 +71,24 @@ int main(int argc, char const *argv[])
     //typedefs
     const int block_size2 = 2;
     const int block_size3 = 3;
+    
+    typedef utils::log_std log_t;
     typedef block<block_size2, real> block2_t;
-    typedef block<block_size2, real> block3_t;
+    typedef block<block_size3, real> block3_t;
     typedef row<block2_t> row2_t;
     typedef row<block3_t> row3_t;
     typedef numerical_algos::sparse_matrix<row2_t> sparse_matrix2_t;
     typedef numerical_algos::sparse_matrix<row3_t> sparse_matrix3_t;
     typedef advect_diff_eq2 <block2_t, row2_t, sparse_matrix2_t> adv_eq2_t;
     //typedef advect_diff_eq3 <block3_t, row3_t, sparse_matrix3_t> adv_eq3_t;
+    typedef amgx_wrap::amgx_wrap_resources<real, log_t> amgx_wrap_resources_t;
+    typedef amgx_wrap::amgx_wrap_solver<amgx_wrap_resources_t> amgx_wrap_t;
 
     check_memory("init");
-    
+    log_t *log = new log_t();
+
     adv_eq2_t ad_eq_class(Nx, Ny);
-    ad_eq_class.set_parameters(50000000.0, 100000.0);
+    ad_eq_class.set_parameters(5.0, 10000.0);
 
     ad_eq_class.form_CUDA_arrays();
     ad_eq_class.print_system();
@@ -113,86 +97,38 @@ int main(int argc, char const *argv[])
     printf("nnzb = %i\n",ad_eq_class.get_number_of_nonzero_blocks());
     
     check_memory("adveciton_diffusion_class");
-  
-    AMGX_SAFE_CALL(AMGX_initialize());
-    AMGX_SAFE_CALL(AMGX_initialize_plugins());
-    AMGX_SAFE_CALL(AMGX_install_signal_handler());
-    set_amgx_mode<real>(mode_x);
-
-    AMGX_SAFE_CALL(AMGX_config_create_from_file(&cfg_x, path_to_config_file));
-    AMGX_SAFE_CALL(AMGX_resources_create_simple(&resources_x, cfg_x));
-
-    AMGX_SAFE_CALL(AMGX_config_add_parameters(&cfg_x, "exception_handling=1"));
-    check_memory("AMGX INIT");    
-    AMGX_matrix_create(&A_x, resources_x, mode_x);
-    AMGX_vector_create(&x_x, resources_x, mode_x);
-    AMGX_vector_create(&b_x, resources_x, mode_x);
-    AMGX_solver_create(&solver_x, resources_x, mode_x, cfg_x);
-    check_memory("Arrays created");   
-
-
-    // //test!
-    // cudaFree(SMatrix.data_d);
-    // SMatrix.data_d = nullptr;
-
-//AMGX_RC AMGX_API AMGX_matrix_upload_all(AMGX_matrix_handle mtx, int n,
-//                                          int nnz, int block_dimx, int block_dimy, const int *row_ptrs,
-//                                          const int *col_indices, const void *data, const void *diag_data);
+    amgx_wrap_resources_t* AMGX_R_p = new amgx_wrap_resources_t(log, 3, "AMGX:");
+    amgx_wrap_t* AMGX = new amgx_wrap_t(AMGX_R_p, path_to_config_file, device_number);
     
-    AMGX_matrix_upload_all(A_x, Nx*Ny, ad_eq_class.get_number_of_nonzero_blocks(), block_size2, block_size2, ad_eq_class.get_matrix_CUDA_IA(), ad_eq_class.get_matrix_CUDA_JA(), ad_eq_class.get_matrix_CUDA_data(), NULL);
-//AMGX_vector_upload(AMGX_vector_handle vec, int n, int block_dim,
-//                  const void *data);
-    AMGX_vector_upload(b_x, Nx*Ny, block_size2, ad_eq_class.get_b_CUDA());
-    AMGX_vector_upload(x_x, Nx*Ny, block_size2, ad_eq_class.get_x_CUDA());
-    check_memory("Arrays uploaded");   
+    AMGX->set_problem_sizes(Nx*Ny, Nx*Ny, block_size2);
+    AMGX->set_matrix_data(ad_eq_class.get_number_of_nonzero_blocks(), ad_eq_class.get_matrix_CUDA_IA(), ad_eq_class.get_matrix_CUDA_JA(), ad_eq_class.get_matrix_CUDA_data());
+    AMGX->set_rhs_data(ad_eq_class.get_b_CUDA());
+    AMGX->set_solution_data(ad_eq_class.get_x_CUDA());
+    check_memory("AMGX init done");
+    //AMGX_matrix_upload_all(A_x, Nx*Ny, ad_eq_class.get_number_of_nonzero_blocks(), block_size2, block_size2, ad_eq_class.get_matrix_CUDA_IA(), ad_eq_class.get_matrix_CUDA_JA(), ad_eq_class.get_matrix_CUDA_data(), NULL);
+    //AMGX_vector_upload(b_x, Nx*Ny, block_size2, ad_eq_class.get_b_CUDA());
+    //AMGX_vector_upload(x_x, Nx*Ny, block_size2, ad_eq_class.get_x_CUDA());
 
-    if(Nx*Ny<26)
-    {
-        AMGX_write_system(A_x, b_x, x_x, "some_system.mtx");
-    }
 
-    //int bsize_x, bsize_y, n, sol_size, sol_bsize;
-    // AMGX_matrix_get_size(A_x, &n, &bsize_x, &bsize_y);
-    // AMGX_vector_get_size(x_x, &sol_size, &sol_bsize);
-    // printf("bsize_x %i, bsize_y %i, n %i, sol_size %i, sol_bsize %i \n", bsize_x, bsize_y, n, sol_size, sol_bsize);
+    AMGX->upload_matrix();
+    AMGX->upload_rhs();
+    AMGX->upload_solution();
 
-    // //test!
-    // cudaFree(SMatrix.data_d);
-    // SMatrix.data_d = nullptr;
+    AMGX->solve();
 
-//solving....
-    AMGX_solver_setup(solver_x, A_x);
-    check_memory("AMGX solver setup"); 
-    AMGX_solver_solve(solver_x, b_x, x_x);
-    check_memory("AMGX solver solve"); 
-    AMGX_solver_get_status(solver_x, &status_x);
-//end solve
+    AMGX->download_solution();
 
-    //get vector back!
-    AMGX_vector_download(x_x, ad_eq_class.get_x_CUDA());
-    
-    std::cout << "Residual L2 norm = " << sqrt(problem_size/Nx/Ny/Nz)*ad_eq_class.residual_norm_gpu() << std::endl;
+    std::cout << "Residual L2 norm = " << ad_eq_class.residual_norm_gpu() << std::endl; //sqrt(problem_size/Nx/Ny/Nz)*
 
     ad_eq_class.copy_results();
     ad_eq_class.print_system();
 
-    AMGX_solver_destroy(solver_x);
-    AMGX_vector_destroy(x_x);
-    AMGX_vector_destroy(b_x);
-    AMGX_matrix_destroy(A_x);
-    check_memory("Arrays distroyed"); 
-    AMGX_resources_destroy(resources_x);
-    /* destroy config (need to use AMGX_SAFE_CALL after this point) */
-    AMGX_SAFE_CALL(AMGX_config_destroy(cfg_x));
-    /* shutdown and exit */
-    AMGX_SAFE_CALL(AMGX_finalize_plugins());
-    AMGX_SAFE_CALL(AMGX_finalize());
+    delete AMGX;
+
     check_memory("AMGX distroyed"); 
 
-
-//    check_memory("advect_diff_eq distroyed"); 
-    
-
+    delete AMGX_R_p;
+    delete log;
    
     return 0;
 }

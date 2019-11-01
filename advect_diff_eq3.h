@@ -151,36 +151,29 @@ private:
 
         if(j==0)
         {
-            b11 = T(1)/dt + T(ccc)/dh*(x_h[indb(j+1,k,0)] + x_h[indb(j,k,0)]) + T(1)/dh/dh/Re*(T(4)+T(1));
-            b12 = T(ccc)/dh*(x_h[indb(j+1,k,1)] + x_h[indb(j,k,1)]);
-            b13 = T(ccc)/dh*(x_h[indb(j+1,k,1)] + x_h[indb(j,k,1)]);
+
         }
         else if(j==Nx-1)
         {
-            b11 = T(1)/dt + T(ccc)/dh*(-x_h[indb(j,k,0)] - x_h[indb(j-1,k,0)])  + T(1)/dh/dh/Re*(T(4)+T(1));
-            b12 = T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j-1,k,1)]);
-            b13 = T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j-1,k,1)]);
+
         }
         else
         {
-            b11 = T(1)/dt + T(ccc)/dh*(x_h[indb(j+1,k,0)] - x_h[indb(j-1,k,0)]) + T(1)/dh/dh/Re*(T(4));
-            b12 = T(ccc)/dh*(x_h[indb(j+1,k,1)] - x_h[indb(j-1,k,1)]);
-            b13 = T(ccc)/dh*(x_h[indb(j+1,k,1)] - x_h[indb(j-1,k,1)]);
+            b11 = T(1)/dt + T(ccc)/dh*(x_h[indb(j+1,k,l,0)] - x_h[indb(j-1,k,l,0)]) + T(1)/dh/dh/Re*(T(6));
+            b12 = T(ccc)/dh*(x_h[indb(j+1,k,l,1)] - x_h[indb(j-1,k,l,1)]);
+            b13 = T(ccc)/dh*(x_h[indb(j+1,k,l,1)] - x_h[indb(j-1,k,l,1)]);
         }
         if(k==0)
         {
-            b21 = T(ccc)/dh*(x_h[indb(j,k+1,1)] + x_h[indb(j,k,1)]);
-            b22 = T(1)/dt + T(ccc)/dh*(x_h[indb(j,k+1,1)] + x_h[indb(j,k,1)]) + T(1)/dh/dh/Re*(T(4)+T(1));
+   
         }
         else if(k==Ny-1)
         {
-            b21 = T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j,k-1,1)]);
-            b22 = T(1)/dt + T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j,k-1,1)]) + T(1)/dh/dh/Re*(T(4)+T(1));
+
         }
         else
         {   
-            b21 = T(ccc)/dh*(x_h[indb(j,k+1,1)] - x_h[indb(j,k-1,1)]);
-            b22 = T(1)/dt + T(ccc)/dh*(x_h[indb(j,k+1,1)] - x_h[indb(j,k-1,1)]) + T(1)/dh/dh/Re*(T(4));
+
         }
 
         Bd->set_block({b11, b12, b21, b22});
