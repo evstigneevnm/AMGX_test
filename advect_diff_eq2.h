@@ -25,6 +25,7 @@ public:
 
     using eg_t::x_h;
     using eg_t::b_h;
+    using eg_t::v_h;
     using eg_t::sparse_matrix_p;
     using eg_t::copy_2_CPU_arrays;
     using eg_t::copy_2_CUDA_arrays;
@@ -76,6 +77,7 @@ public:
                 set_row(j, k);                
                 sparse_matrix_p->add_row(*R0);
                 set_x_vector(j, k);
+                set_v_vector(j, k);
                 set_b_vector(j, k); //first set set_x_vector vector because rhs depends on the solution for the advection diffusion scheme
 
             }
@@ -116,7 +118,7 @@ private:
     void set_d_block(int j, int k)
     {   
         //take boundary conditions into account!
-        //we have four conors plus four lines
+        //we have four conours plus four lines
 
         
         T b11 = T(0);
@@ -126,33 +128,33 @@ private:
 
         if(j==0)
         {
-            b11 = T(1)/dt + T(ccc)/dh*(x_h[indb(j+1,k,0)] + x_h[indb(j,k,0)]) + T(1)/dh/dh/Re*(T(4)+T(1));
-            b12 = T(ccc)/dh*(x_h[indb(j+1,k,1)] + x_h[indb(j,k,1)]);
+            b11 = T(1)/dt + T(ccc)/dh*(v_h[indb(j+1,k,0)] + v_h[indb(j,k,0)]) + T(1)/dh/dh/Re*(T(4)+T(1));
+            b12 = T(ccc)/dh*(v_h[indb(j+1,k,1)] + v_h[indb(j,k,1)]);
         }
         else if(j==Nx-1)
         {
-            b11 = T(1)/dt + T(ccc)/dh*(-x_h[indb(j,k,0)] - x_h[indb(j-1,k,0)])  + T(1)/dh/dh/Re*(T(4)+T(1));
-            b12 = T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j-1,k,1)]);
+            b11 = T(1)/dt + T(ccc)/dh*(-v_h[indb(j,k,0)] - v_h[indb(j-1,k,0)])  + T(1)/dh/dh/Re*(T(4)+T(1));
+            b12 = T(ccc)/dh*(-v_h[indb(j,k,1)] - v_h[indb(j-1,k,1)]);
         }
         else
         {
-            b11 = T(1)/dt + T(ccc)/dh*(x_h[indb(j+1,k,0)] - x_h[indb(j-1,k,0)]) + T(1)/dh/dh/Re*(T(4));
-            b12 = T(ccc)/dh*(x_h[indb(j+1,k,1)] - x_h[indb(j-1,k,1)]);
+            b11 = T(1)/dt + T(ccc)/dh*(v_h[indb(j+1,k,0)] - v_h[indb(j-1,k,0)]) + T(1)/dh/dh/Re*(T(4));
+            b12 = T(ccc)/dh*(v_h[indb(j+1,k,1)] - v_h[indb(j-1,k,1)]);
         }
         if(k==0)
         {
-            b21 = T(ccc)/dh*(x_h[indb(j,k+1,1)] + x_h[indb(j,k,1)]);
-            b22 = T(1)/dt + T(ccc)/dh*(x_h[indb(j,k+1,1)] + x_h[indb(j,k,1)]) + T(1)/dh/dh/Re*(T(4)+T(1));
+            b21 = T(ccc)/dh*(v_h[indb(j,k+1,1)] + v_h[indb(j,k,1)]);
+            b22 = T(1)/dt + T(ccc)/dh*(v_h[indb(j,k+1,1)] + v_h[indb(j,k,1)]) + T(1)/dh/dh/Re*(T(4)+T(1));
         }
         else if(k==Ny-1)
         {
-            b21 = T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j,k-1,1)]);
-            b22 = T(1)/dt + T(ccc)/dh*(-x_h[indb(j,k,1)] - x_h[indb(j,k-1,1)]) + T(1)/dh/dh/Re*(T(4)+T(1));
+            b21 = T(ccc)/dh*(-v_h[indb(j,k,1)] - v_h[indb(j,k-1,1)]);
+            b22 = T(1)/dt + T(ccc)/dh*(-v_h[indb(j,k,1)] - v_h[indb(j,k-1,1)]) + T(1)/dh/dh/Re*(T(4)+T(1));
         }
         else
         {   
-            b21 = T(ccc)/dh*(x_h[indb(j,k+1,1)] - x_h[indb(j,k-1,1)]);
-            b22 = T(1)/dt + T(ccc)/dh*(x_h[indb(j,k+1,1)] - x_h[indb(j,k-1,1)]) + T(1)/dh/dh/Re*(T(4));
+            b21 = T(ccc)/dh*(v_h[indb(j,k+1,1)] - v_h[indb(j,k-1,1)]);
+            b22 = T(1)/dt + T(ccc)/dh*(v_h[indb(j,k+1,1)] - v_h[indb(j,k-1,1)]) + T(1)/dh/dh/Re*(T(4));
         }
 
         Bd->set_block({b11, b12, b21, b22});
@@ -163,11 +165,11 @@ private:
         Bxp->reset_block();
         if(j<Nx-1)
         {
-            Bxp->set_block({T(ccc)/dh*x_h[indb(j,k,0)] - T(1)/dh/dh/Re*(T(1)),T(0),T(0),T(ccc)/dh*x_h[indb(j,k,0)] - T(1)/dh/dh/Re*(T(1))});
+            Bxp->set_block({T(ccc)/dh*v_h[indb(j,k,0)] - T(1)/dh/dh/Re*(T(1)),T(0),T(0),T(ccc)/dh*v_h[indb(j,k,0)] - T(1)/dh/dh/Re*(T(1))});
         }
         else
         {
-            Bd->update_set_block({-T(ccc)/dh*x_h[indb(j,k,0)],T(0),T(0),-T(ccc)/dh*x_h[indb(j,k,0)]});
+            Bd->update_set_block({-T(ccc)/dh*v_h[indb(j,k,0)],T(0),T(0),-T(ccc)/dh*v_h[indb(j,k,0)]});
         }
     }    
     void set_yp_block(int j, int k)
@@ -175,11 +177,11 @@ private:
         Byp->reset_block();
         if(k<Ny-1)
         {
-            Byp->set_block({T(ccc)/dh*x_h[indb(j,k,1)] - T(1)/dh/dh/Re*(T(1)),T(0),T(0),T(ccc)/dh*x_h[indb(j,k,1)] - T(1)/dh/dh/Re*(T(1))});
+            Byp->set_block({T(ccc)/dh*v_h[indb(j,k,1)] - T(1)/dh/dh/Re*(T(1)),T(0),T(0),T(ccc)/dh*v_h[indb(j,k,1)] - T(1)/dh/dh/Re*(T(1))});
         }
         else
         {
-            Bd->update_set_block({-T(ccc)/dh*x_h[indb(j,k,1)],T(0),T(0),-T(ccc)/dh*x_h[indb(j,k,1)]});
+            Bd->update_set_block({-T(ccc)/dh*v_h[indb(j,k,1)],T(0),T(0),-T(ccc)/dh*v_h[indb(j,k,1)]});
         }
     }    
     void set_xm_block(int j, int k)
@@ -187,11 +189,11 @@ private:
         Bxm->reset_block();
         if(j>0)
         {
-            Bxm->set_block({-T(ccc)/dh*x_h[indb(j,k,0)] - T(1)/dh/dh/Re*(T(1)),T(0),T(0),-T(ccc)/dh*x_h[indb(j,k,0)] - T(1)/dh/dh/Re*(T(1))});
+            Bxm->set_block({-T(ccc)/dh*v_h[indb(j,k,0)] - T(1)/dh/dh/Re*(T(1)),T(0),T(0),-T(ccc)/dh*v_h[indb(j,k,0)] - T(1)/dh/dh/Re*(T(1))});
         }
         else
         {
-            Bd->update_set_block({T(ccc)/dh*x_h[indb(j,k,0)],T(0),T(0),T(ccc)/dh*x_h[indb(j,k,0)]});
+            Bd->update_set_block({T(ccc)/dh*v_h[indb(j,k,0)],T(0),T(0),T(ccc)/dh*v_h[indb(j,k,0)]});
         }
     }    
     void set_ym_block(int j, int k)
@@ -199,11 +201,11 @@ private:
         Bym->reset_block();
         if(k>0)
         {
-            Bym->set_block({-T(ccc)/dh*x_h[indb(j,k,1)] - T(1)/dh/dh/Re*(T(1)),T(0),T(0),-T(ccc)/dh*x_h[indb(j,k,1)] - T(1)/dh/dh/Re*(T(1))});
+            Bym->set_block({-T(ccc)/dh*v_h[indb(j,k,1)] - T(1)/dh/dh/Re*(T(1)),T(0),T(0),-T(ccc)/dh*v_h[indb(j,k,1)] - T(1)/dh/dh/Re*(T(1))});
         }
         else
         {
-            Bd->update_set_block({T(ccc)/dh*x_h[indb(j,k,1)],T(0),T(0),T(ccc)/dh*x_h[indb(j,k,1)]});
+            Bd->update_set_block({T(ccc)/dh*v_h[indb(j,k,1)],T(0),T(0),T(ccc)/dh*v_h[indb(j,k,1)]});
         }
     }    
 
@@ -213,10 +215,17 @@ private:
         b_h[indb(j,k,0)] = cos(M_PI*T(j)/T(Nx-1));//+x_h[indb(j,k,0)];
         b_h[indb(j,k,1)] = cos(M_PI*T(k)/T(Ny-1));//+x_h[indb(j,k,1)]; 
     }
-    void set_x_vector(int j, int k)
+
+    void set_v_vector(int j, int k)
     {
         x_h[indb(j,k,0)] = sin(M_PI*T(j)/T(Nx-1));
         x_h[indb(j,k,1)] = sin(M_PI*T(j)/T(Nx-1));
+    }
+
+    void set_x_vector(int j, int k)
+    {
+        x_h[indb(j,k,0)] = 0.0;//sin(M_PI*T(j)/T(Nx-1));
+        x_h[indb(j,k,1)] = 0.0;//sin(M_PI*T(j)/T(Nx-1));
     }
 
      inline int ind(int j, int k)

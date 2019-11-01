@@ -88,7 +88,7 @@ int main(int argc, char const *argv[])
     log_t *log = new log_t();
 
     adv_eq2_t ad_eq_class(Nx, Ny);
-    ad_eq_class.set_parameters(5.0, 10000.0);
+    ad_eq_class.set_parameters(500.0, 100000.0);
 
     ad_eq_class.form_CUDA_arrays();
     ad_eq_class.print_system();

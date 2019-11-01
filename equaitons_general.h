@@ -18,6 +18,8 @@ struct equaitons_general
     T* x_h = nullptr;
     T* b_d = nullptr;
     T* x_d = nullptr;
+    T* v_h = nullptr;
+    T* v_d = nullptr;
     Smatrix* sparse_matrix_p;
     size_t whole_size;
 
@@ -28,6 +30,7 @@ struct equaitons_general
         
         b_h = (T*)malloc(whole_size*Block_Size*sizeof(T));
         x_h = (T*)malloc(whole_size*Block_Size*sizeof(T));
+        v_h = (T*)malloc(whole_size*Block_Size*sizeof(T));
         sparse_matrix_p = new Smatrix(whole_size);
         init_CUDA_arrays();
 
@@ -37,6 +40,7 @@ struct equaitons_general
         delete sparse_matrix_p;
         free_C_array(b_h);
         free_C_array(x_h);
+        free_C_array(v_h);
         free_CUDA_arrays();
     }
 
@@ -56,11 +60,13 @@ struct equaitons_general
     {
         b_d =  device_allocate<T>(whole_size*Block_Size);
         x_d =  device_allocate<T>(whole_size*Block_Size);
+        v_d =  device_allocate<T>(whole_size*Block_Size);
     }
     void copy_2_CUDA_arrays()
     {
         host_2_device_cpy<T>(b_d, b_h, whole_size*Block_Size);
-        host_2_device_cpy<T>(x_d, x_h, whole_size*Block_Size);        
+        host_2_device_cpy<T>(x_d, x_h, whole_size*Block_Size); 
+        host_2_device_cpy<T>(v_d, v_h, whole_size*Block_Size);        
         sparse_matrix_p->form_matrix_gpu();
     }
 
@@ -82,6 +88,12 @@ struct equaitons_general
             cudaFree(b_d);
             b_d = nullptr;
         }
+        if(v_d != nullptr)
+        {
+            cudaFree(v_d);
+            v_d = nullptr;
+        }
+
     }
     void free_C_array(T*& array)
     {
