@@ -88,7 +88,7 @@ int main(int argc, char const *argv[])
     log_t *log = new log_t();
 
     adv_eq2_t ad_eq_class(Nx, Ny);
-    ad_eq_class.set_parameters(500.0, 100000.0);
+    ad_eq_class.set_parameters(5000.0, 100000.0);
 
     ad_eq_class.form_CUDA_arrays();
     ad_eq_class.print_system();
@@ -114,7 +114,22 @@ int main(int argc, char const *argv[])
     AMGX->upload_rhs();
     AMGX->upload_solution();
 
-    AMGX->solve();
+    int solve_res = AMGX->solve();
+    switch(solve_res)
+    {
+        case(0):
+            printf("converged\n");
+            break;
+        case(1):
+            printf("failed\n");
+            break;
+        case(2):
+            printf("not converged\n");
+            break;
+        case(3):
+            printf("unknown error\n");
+            break;
+    }
 
     AMGX->download_solution();
 
