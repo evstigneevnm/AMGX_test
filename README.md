@@ -8,4 +8,7 @@ Execution:
     size - one, two or three integers, depending on the problem. Problem discretizaton
     Path to AmgX configuration file, Examples of configuration files are presented in the above path
 
-1. 2D finite difference advection-diffusion test on a unit square with zero boundary conditions. 
+Internal parameters, like advection velocity magnitude and Reynolds number (diffusion coefficient) are modified inside the cpp file. Rebuild after modificaton
+
+1. Block 2D finite difference advection-diffusion test on a unit square with zero boundary conditions. 
+
